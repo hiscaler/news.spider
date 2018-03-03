@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 
+import requests
 import scrapy
-from scrapy import Request
+from bs4 import BeautifulSoup
 from thepaper.items import ThepaperItem
 
 
@@ -29,6 +30,7 @@ class Thepaper(scrapy.Spider):
 
         for data in raw_data:
             item = ThepaperItem()
+
             title = data.xpath("h2/a/text()").extract_first().strip()
             summary = data.xpath("p/text()").extract()
             category = data.xpath("div[@class='pdtt_trbs']/a/text()").extract_first().strip()
@@ -36,17 +38,30 @@ class Thepaper(scrapy.Spider):
                 summary = summary[0].strip()
             else:
                 summary = ""
+            href = data.xpath("h2/a/@href").extract_first().strip()
+            url = ''
+            content = ''
+            if (len(href)):
+                url = 'http://www.thepaper.cn/' + href
+                r = requests.get(url)
+                if r.status_code == 200:
+                    soup = BeautifulSoup(r.text)
+                    content = str(soup.select_one('div.news_txt'))
+                else:
+                    content = ''
+
+            item['url'] = url
             item['title'] = title
             item['summary'] = summary
             item['category'] = category
-            item['content'] = ''
+            item['content'] = content
 
-            print(item)
+            # print(item)
 
             yield item
 
         self.page += 1
-        if self.page <= 20:
+        if self.page <= 1:
             next_page_url = "http://www.thepaper.cn/load_chosen.jsp?nodeids=25949&topCids=2014625,2013382,2014629,2014464,&pageidx=" + str(self.page) + "&lasttime=" + self.last_time
         else:
             next_page_url = None

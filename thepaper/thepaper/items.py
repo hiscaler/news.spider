@@ -9,9 +9,8 @@ import scrapy
 
 
 class ThepaperItem(scrapy.Item):
+    url = scrapy.Field()
     title = scrapy.Field()
     category = scrapy.Field()
     summary = scrapy.Field()
     content = scrapy.Field()
-
-

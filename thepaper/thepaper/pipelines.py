@@ -15,7 +15,7 @@ def dbHandle():
         db='spider',
         passwd='root',
         charset='utf8',
-        use_unicode=False
+        use_unicode=True
     )
     return conn
 
@@ -23,14 +23,36 @@ def dbHandle():
 class ThepaperPipeline(object):
     def process_item(self, item, spider):
         print("PROCESS_ITEM .....")
-        dbObject = dbHandle()
-        cursor = dbObject.cursor()
-        sql = 'insert into thepaper(title, category, summary) values (%s, %s, %s)'
+        db_handle = dbHandle()
+        cursor = db_handle.cursor()
+        # cursor.execute('SELECT COUNT(*) FROM thepaper WHERE url = "' + item['url'] + '"')
+        # data = cursor.fetchone()
+        # print("-------------")
+        # if data is None:
+        #     try:
+        #         sql = 'insert into thepaper(url, title, category, summary, content) values (%s, %s, %s, %s, %s)'
+        #         db_handle.cursor().execute(sql, (item['url'], item['title'], item['category'], item['summary'], item['content']))
+        #         db_handle.commit()
+        #     except Exception as err:
+        #         print(err)
+        #         db_handle.rollback()
 
-        try:
-            cursor.execute(sql, (item['title'], item['category'], item['summary']))
-            dbObject.commit()
-        except Exception:
-            dbObject.rollback()
+        cursor.execute('SELECT COUNT(*) FROM thepaper WHERE url = "' + item['url'] + '"')
+        data = cursor.fetchone()
+        print("-------------")
+        if data[0]:
+            print("Query is exist")
+        else:
+            print('Query is none')
+            db_handle.begin()
+            try:
+                sql = 'insert into thepaper(url, title, category, summary, content) values (%s, %s, %s, %s, %s)'
+                cursor.execute(sql, (item['url'], item['title'], item['category'], item['summary'], item['content']))
+                db_handle.commit()
+            except Exception as err:
+                print(err)
+                db_handle.rollback()
+            finally:
+                db_handle.close()
 
         return item
