@@ -30,6 +30,8 @@ class BaiduBaike(scrapy.Spider):
         '美国': 3,
         '日本': 4,
         '英国': 5,
+        '法国': 6,
+        '德国': 7,
     }
 
     category_id = None

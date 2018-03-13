@@ -9,10 +9,17 @@ import requests
 
 class BaiduPipeline(object):
     def process_item(self, item, spider):
-        if item['id'] and item['name'] is not None and item['description'] is not None:
-            r = requests.post('http://localhost:8002/index.php/api/category/update?id=' + str(item['id']), {
+        if item['name'] is not None and item['description'] is not None:
+            id = int(item['id'])
+            url = 'http://localhost:8002/index.php/api/category/' + ('update?id=' + str(id) if id else 'create')
+            print(url)
+            data = {
                 'description': item['description']
-            })
+            }
+            if not id:
+                data['parent_id'] = 1
+                data['name'] = item['name']
+            r = requests.post(url, data)
             if r.status_code == 200:
                 print(r.content)
             else:
