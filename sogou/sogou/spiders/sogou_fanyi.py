@@ -16,26 +16,38 @@ class SogouFanyi(scrapy.Spider):
     ]
 
     def __init__(self):
-        browser = webdriver.Chrome('C:\Program Files (x86)\Google\Chrome\Application\chromedriver')
+        options = webdriver.ChromeOptions()
+        options.add_argument('user-data-dir=D:/tmp')
+        browser = webdriver.Chrome('C:\Program Files (x86)\Google\Chrome\Application\chromedriver', options=options)
+
         browser.get(self.start_urls[0])
-        scriptArray = """localStorage.setItem("TRANSPAGE_DIALOG_SHOW", '1');
-                            """
-        result = browser.execute_script(scriptArray)
-        time.sleep(10)
+
         browser.switch_to.frame('translate-iframe-dest')
         time.sleep(10)
-        # button_ok = browser.find_element_by_xpath('//button[@class="sm-dialog-button"]')
-        # print(button_ok)
-        # buttons = browser.find_elements_by_class_name('sm-dialog-button')
-        # print(buttons)
-
+        browser.execute_script('window.localStorage.setItem("TRANSPAGE_DIALOG_SHOW", 1);')
 
         page_source = browser.page_source
+        parse_result = self.parse_msn(page_source)
+        print(parse_result)
         # print(page_source)
-        soup = BeautifulSoup(page_source)
-        obj = soup.select_one('div.articlecontent > h1')
-        print(obj)
+        # soup = BeautifulSoup(page_source)
+        # obj = soup.select_one('div.articlecontent > h1')
+        # print(obj)
         browser.close()
+
+    def parse_msn(self, page_source):
+        if page_source:
+            soup = BeautifulSoup(page_source)
+            title = soup.select_one('div.articlecontent > h1').get_text()
+            content = soup.select_one('div.richtext')
+            description = content.get_text().replace("\n", '')[:60]
+            return {
+                'title': title,
+                'description': description,
+                'content': content
+            }
+        else:
+            return None
 
     def parse(self, response):
         if not response or response is None:
