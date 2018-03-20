@@ -13,20 +13,44 @@ class SogouFanyi(scrapy.Spider):
     debug = True
     page_index = 1
     browser = None
+    urls = []
+    url_index = None
+
     # 'https://translate.sogoucdn.com/pcvtsnapshot?url=https%3A%2F%2Fwww.msn.com%2Fen-us%2Fnews%2Fpolitics%2Ftrump-takes-victory-lap-on-mccabe-firing-a-great-day-for-democracy%2Far-BBKkbJX%3Fli%3DBBnbcA1&query=&tabMode=1&noTrans=0&tfr=web_en&from=en&to=zh-CHS&_t=1521270440240',
-    start_urls = [
-        # 'http://www.bbc.com/news/world-us-canada-43453312'
-        'https://finance.yahoo.com/news/thanks-obama-virginia-blames-barack-060948297.html'
-    ]
+    # start_urls = [
+    #     # 'http://www.bbc.com/news/world-us-canada-43453312'
+    #     'https://finance.yahoo.com/news/thanks-obama-virginia-blames-barack-060948297.html'
+    # ]
+
+    def start_requests(self):
+        # urls = [
+        #     'http://www.bbc.com/news/world-us-canada-43453312'
+        #     'https://finance.yahoo.com/news/thanks-obama-virginia-blames-barack-060948297.html'
+        # ]
+        url = self.urls[self.url_index]
+        print("Current url index is %s" % self.url_index)
+        print("Current url is %s" % url)
+        yield scrapy.Request(url=url, callback=self.parse)
+        # for url in urls:
+        #     yield scrapy.Request(url=url, callback=self.parse())
 
     def __init__(self):
+        super(SogouFanyi, self).__init__()
+        if not self.urls:
+            self.urls = [
+                # 'http://www.bbc.com/news/world-us-canada-43453312',
+                'https://finance.yahoo.com/news/thanks-obama-virginia-blames-barack-060948297.html',
+                'https://finance.yahoo.com/news/u-supreme-court-rejects-arizona-challenge-dreamers-program-134912301.html',
+            ]
+
+        self.url_index = 0
         # todo Get urls from api
         # sogou_url = ('https://translate.sogoucdn.com/pcvtsnapshot?url=%s&query=&tabMode=1&noTrans=0&tfr=web_en&from=en&to=zh-CHS&_t=1521270440240' % parse.quote(self.start_urls[0], ''))
         # self.start_urls.clear()
         # self.start_urls.append(sogou_url)
-        options = webdriver.ChromeOptions()
-        options.add_argument('user-data-dir=D:/tmp')
-        self.browser = webdriver.Chrome('C:\Program Files (x86)\Google\Chrome\Application\chromedriver', options=options)
+        # options = webdriver.ChromeOptions()
+        # options.add_argument('user-data-dir=D:/tmp')
+        # self.browser = webdriver.Chrome('C:\Program Files (x86)\Google\Chrome\Application\chromedriver', options=options)
         # self.start_urls = []
         """
         options = webdriver.ChromeOptions()
@@ -143,8 +167,11 @@ class SogouFanyi(scrapy.Spider):
 
     def parse(self, response):
         url = response.url
-        print("Response.url = %s", url)
-        sogou_url = ('https://translate.sogoucdn.com/pcvtsnapshot?url=%s&query=&tabMode=1&noTrans=0&tfr=web_en&from=en&to=zh-CHS&_t=1521270440240' % parse.quote(url, '/'))
+        options = webdriver.ChromeOptions()
+        options.add_argument('user-data-dir=D:/tmp')
+        self.browser = webdriver.Chrome('C:\Program Files (x86)\Google\Chrome\Application\chromedriver', options=options)
+        print("Response.url = %s" % url)
+        sogou_url = ('https://translate.sogoucdn.com/pcvtsnapshot?url=%s&query=&tabMode=1&noTrans=0&tfr=web_en&from=en&to=zh-CHS&_t=1521270440240' % parse.quote(url, ''))
         print("Sogou URL = %s", sogou_url)
         self.browser.get(sogou_url)
 
@@ -154,7 +181,7 @@ class SogouFanyi(scrapy.Spider):
         time.sleep(20)
 
         page_source = self.browser.page_source
-        if self.debug:
+        if self.debug and page_source:
             f = open('article.txt', 'w+')
             f.write(page_source)
             f.close()
@@ -179,3 +206,10 @@ class SogouFanyi(scrapy.Spider):
             print('Translate Failed.')
 
         self.browser.close()
+
+        self.url_index = self.url_index + 1
+        print('self.url_index = ' + str(self.url_index))
+        if len(self.urls) > self.url_index:
+            url = self.urls[self.url_index]
+            yield scrapy.Request(url=url, callback=self.parse)
+            # yield response.follow(url, self.parse())
