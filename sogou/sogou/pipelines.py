@@ -8,6 +8,10 @@
 import pprint
 import requests
 import datetime
+import re
+import mimetypes
+import uuid
+import os
 
 
 class SogouPipeline(object):
@@ -35,6 +39,8 @@ class SogouPipeline(object):
 
             if 'source' not in item or not item['source']:
                 item['source'] = 'APD'
+
+            item['content'] = self.fix_content(item['content'])
 
             print(80 * '#')
             print(self.__class__.__name__ + '.' + self.process_item.__name__ + ':')
@@ -66,3 +72,52 @@ class SogouPipeline(object):
             return item
         else:
             print("Item is invalid.")
+
+    @staticmethod
+    def fix_content(self, html):
+        if not html:
+            return html
+
+        pattern = re.compile(r'.*<img.*src=["\'](\S*)["\']\s+')
+        images = pattern.findall(html)
+        pp = pprint.PrettyPrinter()
+        pp.pprint(images)
+
+        for img in images:
+            new_img = img
+            if img.startswith(('http', '//')):
+                url = img
+                if img.startswith('//'):
+                    url = 'http:' + img
+                response = requests.get(url, stream=True)
+                if not response.ok:
+                    print(response)
+                    continue
+
+                content_type = response.headers['content-type']
+                extension = mimetypes.guess_extension(content_type, False)
+                if extension is None:
+                    extension = '.png'
+                elif extension == '.jpe':
+                    extension = '.jpg'
+
+                save_dir = 'D:/tmp'
+                path_url = '/uploads/' + datetime.date.today().strftime('%Y%m%d') + '/';
+                if not os.path.exists(save_dir + path_url):
+                    os.mkdir(save_dir + path_url)
+
+                path_url += uuid.uuid4().__str__() + extension
+                new_img = path_url
+                f = open(save_dir + path_url, 'wb')
+
+                for block in response.iter_content(1024):
+                    if not block:
+                        break
+
+                    f.write(block)
+
+                f.close()
+
+                html = html.replace(img, new_img)
+
+        return html
