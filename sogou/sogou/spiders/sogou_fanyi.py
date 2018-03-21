@@ -162,10 +162,16 @@ class SogouFanyi(scrapy.Spider):
         :return: return dict if parse success, else return None
         """
         if page_source:
+            title = None
             soup = BeautifulSoup(page_source)
-            title = soup.select_one('#SideTop-0-HeadComponentTitle h1')
-            if title is not None:
-                title = title.get_text()
+            selectors = ['#Lead-1-HeadComponentTitle h1', '#SideTop-0-HeadComponentTitle h1']
+            for selector in selectors:
+                title = soup.select_one(selector)
+                if title is None:
+                    continue
+                else:
+                    title = title.get_text()
+                    break
 
             content = soup.select_one('div.canvas-body')
             if content is not None:
@@ -193,9 +199,15 @@ class SogouFanyi(scrapy.Spider):
         """
         if page_source:
             soup = BeautifulSoup(page_source)
-            title = soup.select_one('h1.article-title')
-            if title is not None:
-                title = title.get_text()
+            title = None
+            selectors = ['h1.article-title', 'h1.pg-headline']
+            for selector in selectors:
+                title = soup.select_one(selector)
+                if title is None:
+                    continue
+                else:
+                    title = title.get_text()
+                    break
 
             content = soup.select_one('div#storytext')
             if content is not None:
@@ -265,6 +277,7 @@ class SogouFanyi(scrapy.Spider):
         print(type(page_source))
         if self.debug and page_source:
             f = open('article.txt', 'w+')
+            print(page_source)
             # f.write(page_source.encode('utf-8'))
             f.close()
 

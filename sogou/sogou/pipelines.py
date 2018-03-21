@@ -40,7 +40,7 @@ class SogouPipeline(object):
             if 'source' not in item or not item['source']:
                 item['source'] = 'APD'
 
-            item['content'] = self.fix_content(item['content'])
+            item['content'] = self.fix_content(html=item['content'])
 
             print(80 * '#')
             print(self.__class__.__name__ + '.' + self.process_item.__name__ + ':')
@@ -73,7 +73,7 @@ class SogouPipeline(object):
         else:
             print("Item is invalid.")
 
-    @staticmethod
+
     def fix_content(self, html):
         if not html:
             return html
