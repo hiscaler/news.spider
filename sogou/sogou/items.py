@@ -13,6 +13,7 @@ class SogouItem(scrapy.Item):
     node_id = scrapy.Field()
     title = scrapy.Field()
     short_title = scrapy.Field()
+    author = scrapy.Field()
     source = scrapy.Field()
     description = scrapy.Field()
     published_at = scrapy.Field()

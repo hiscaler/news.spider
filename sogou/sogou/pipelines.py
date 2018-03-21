@@ -30,6 +30,9 @@ class SogouPipeline(object):
             if 'published_at' not in item or not item['published_at']:
                 item['published_at'] = datetime.date.today().strftime('%Y-%m-%d %H:%M:%S')
 
+            if 'author' not in item or not item['author']:
+                item['author'] = 'APD'
+
             if 'source' not in item or not item['source']:
                 item['source'] = 'APD'
 

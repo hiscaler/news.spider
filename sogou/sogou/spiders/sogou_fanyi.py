@@ -250,7 +250,9 @@ class SogouFanyi(scrapy.Spider):
         options.add_argument('user-data-dir=D:/tmp')
         self.browser = webdriver.Chrome('C:\Program Files (x86)\Google\Chrome\Application\chromedriver', options=options)
         print("Response.url = %s" % url)
-        sogou_url = ('https://translate.sogoucdn.com/pcvtsnapshot?url=%s&query=&tabMode=1&noTrans=0&tfr=web_en&from=en&to=zh-CHS&_t=1521270440240' % parse.quote(url, ''))
+        # sogou_url = ('https://translate.sogoucdn.com/pcvtsnapshot?url=%s&query=&tabMode=1&noTrans=0&tfr=web_en&from=en&to=zh-CHS&_t=1521270440240' % parse.quote(url, ''))
+        sogou_url = ('http://translate.sogoucdn.com/pcvtsnapshot?from=auto&to=zh-CHS&tfr=translatepc&url=%s&domainType=sogou' % parse.quote(url, ''))
+
         print("Sogou URL = %s", sogou_url)
         self.browser.get(sogou_url)
 
