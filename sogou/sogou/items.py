@@ -9,8 +9,11 @@ import scrapy
 
 
 class SogouItem(scrapy.Item):
-    # define the fields for your item here like:
-    # name = scrapy.Field()
+    id = scrapy.Field()
+    node_id = scrapy.Field()
     title = scrapy.Field()
+    short_title = scrapy.Field()
+    source = scrapy.Field()
     description = scrapy.Field()
+    published_at = scrapy.Field()
     content = scrapy.Field()

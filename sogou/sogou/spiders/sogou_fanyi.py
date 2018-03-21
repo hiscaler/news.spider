@@ -4,14 +4,18 @@ import scrapy
 from selenium import webdriver
 import time
 from bs4 import BeautifulSoup
-import re
 from urllib import parse
+import requests
+import sys
+import io
+from sogou.items import SogouItem
+
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='gb18030')
 
 
 class SogouFanyi(scrapy.Spider):
     name = 'sogou_fanyi'
     debug = True
-    page_index = 1
     browser = None
     urls = []
     url_index = None
@@ -27,21 +31,30 @@ class SogouFanyi(scrapy.Spider):
         #     'http://www.bbc.com/news/world-us-canada-43453312'
         #     'https://finance.yahoo.com/news/thanks-obama-virginia-blames-barack-060948297.html'
         # ]
-        url = self.urls[self.url_index]
+        urlItem = self.urls[self.url_index]
         print("Current url index is %s" % self.url_index)
-        print("Current url is %s" % url)
-        yield scrapy.Request(url=url, callback=self.parse)
+        print("Current url is %s" % urlItem['url'])
+        yield scrapy.Request(url=urlItem['url'], callback=self.parse)
         # for url in urls:
         #     yield scrapy.Request(url=url, callback=self.parse())
 
     def __init__(self):
         super(SogouFanyi, self).__init__()
         if not self.urls:
-            self.urls = [
-                # 'http://www.bbc.com/news/world-us-canada-43453312',
-                'https://finance.yahoo.com/news/thanks-obama-virginia-blames-barack-060948297.html',
-                'https://finance.yahoo.com/news/u-supreme-court-rejects-arizona-challenge-dreamers-program-134912301.html',
-            ]
+            response = requests.get('http://localhost:8002/index.php/api/post/url/list?limit=10&status=pending')
+            if response.status_code == 200:
+                body_json = response.json()
+                for item in body_json['data']['items']:
+                    self.urls.append({'id': item['id'], 'url': item['url']})
+                print("body_json type is: %s" % type(body_json))
+                print(body_json)
+            else:
+                self.urls.append({'id': 0, 'url': 'http://www.example.com'})
+                # self.urls = [
+                #     # 'http://www.bbc.com/news/world-us-canada-43453312',
+                #     'https://finance.yahoo.com/news/thanks-obama-virginia-blames-barack-060948297.html',
+                #     'https://finance.yahoo.com/news/u-supreme-court-rejects-arizona-challenge-dreamers-program-134912301.html',
+                # ]
 
         self.url_index = 0
         # todo Get urls from api
@@ -109,11 +122,13 @@ class SogouFanyi(scrapy.Spider):
             title = soup.select_one('div.articlecontent > h1').get_text()
             content = soup.select_one('div.richtext')
             description = content.get_text().replace("\n", '')[:60]
-            return {
-                'title': title,
-                'description': description,
-                'content': content
-            }
+            item = SogouItem()
+            item['title'] = title
+            item['source'] = 'msn'
+            item['description'] = description
+            item['content'] = content
+
+            return item
         else:
             return None
 
@@ -129,11 +144,13 @@ class SogouFanyi(scrapy.Spider):
             title = soup.select_one('h1.story-body__h1').get_text()
             content = soup.select_one('div.story-body')
             description = content.get_text().replace("\n", '')[:60]
-            return {
-                'title': title,
-                'description': description,
-                'content': content
-            }
+            item = SogouItem()
+            item['title'] = title
+            item['source'] = 'bbc'
+            item['description'] = description
+            item['content'] = content
+
+            return item
         else:
             return None
 
@@ -157,11 +174,73 @@ class SogouFanyi(scrapy.Spider):
             if title is None or content is None:
                 return None
             else:
-                return {
-                    'title': title,
-                    'description': description,
-                    'content': content
-                }
+                item = SogouItem()
+                item['title'] = title
+                item['source'] = 'yahoo'
+                item['description'] = description
+                item['content'] = content
+
+                return item
+        else:
+            return None
+
+    def parse_cnn(self, page_source):
+        """
+        Parse www.cnn.com article content
+
+        :param page_source: article content
+        :return: return dict if parse success, else return None
+        """
+        if page_source:
+            soup = BeautifulSoup(page_source)
+            title = soup.select_one('h1.article-title')
+            if title is not None:
+                title = title.get_text()
+
+            content = soup.select_one('div#storytext')
+            if content is not None:
+                description = content.get_text().replace("\n", '')[:60]
+
+            if title is None or content is None:
+                return None
+            else:
+                item = SogouItem()
+                item['title'] = title
+                item['source'] = 'yahoo'
+                item['description'] = description
+                item['content'] = content
+
+                return item
+        else:
+            return None
+
+    def parse_reuters(self, page_source):
+        """
+        Parse www.reuters.com article content
+
+        :param page_source: article content
+        :return: return dict if parse success, else return None
+        """
+        if page_source:
+            soup = BeautifulSoup(page_source)
+            title = soup.select_one('div.foreground > h1')
+            if title is not None:
+                title = title.get_text()
+
+            content = soup.select_one('div.body_1gnLA')
+            if content is not None:
+                description = content.get_text().replace("\n", '')[:60]
+
+            if title is None or content is None:
+                return None
+            else:
+                item = SogouItem()
+                item['title'] = title
+                item['source'] = 'yahoo'
+                item['description'] = description
+                item['content'] = content
+
+                return item
         else:
             return None
 
@@ -181,9 +260,10 @@ class SogouFanyi(scrapy.Spider):
         time.sleep(20)
 
         page_source = self.browser.page_source
+        print(type(page_source))
         if self.debug and page_source:
             f = open('article.txt', 'w+')
-            f.write(page_source)
+            # f.write(page_source.encode('utf-8'))
             f.close()
 
         if url is None:
@@ -194,12 +274,15 @@ class SogouFanyi(scrapy.Spider):
             parse_result = self.parse_msn(page_source)
         elif '.yahoo.' in url:
             parse_result = self.parse_yahoo(page_source)
+        elif '.cnn.' in url:
+            parse_result = self.parse_cnn(page_source)
+        elif '.reuters.' in url:
+            parse_result = self.parse_reuters(page_source)
         else:
             parse_result = None
 
         if parse_result is not None:
-            # print("Translate success, Return value is:")
-            # print(parse_result)
+            parse_result['id'] = self.urls[self.url_index]['id']
             yield parse_result
             # Post to api
         else:
