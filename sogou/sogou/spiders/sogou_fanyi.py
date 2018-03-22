@@ -41,7 +41,7 @@ class SogouFanyi(scrapy.Spider):
     def __init__(self):
         super(SogouFanyi, self).__init__()
         if not self.urls:
-            response = requests.get('http://localhost:8002/index.php/api/post/url/list?limit=10&status=pending')
+            response = requests.get('http://localhost:8002/index.php/api/post/url/list?limit=10&status=pending,failed')
             if response.status_code == 200:
                 body_json = response.json()
                 for item in body_json['data']['items']:

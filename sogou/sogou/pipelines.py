@@ -67,13 +67,14 @@ class SogouPipeline(object):
                         url_callback_payload['message'] = error_message
 
                 except ValueError:
+                    url_callback_payload['status'] = 'failed'
                     print('Response is not a json data')
             else:
                 print("Post to `%s` failed." % self.remote_api_url)
                 url_callback_payload['status'] = 'failed'
                 url_callback_payload['message'] = response.text.encode('utf-8')
 
-            # 修改采集地址状态为完成
+            # 采集地址数据回调处理
             response = requests.post('http://localhost:8002/index.php/api/post/url/callback?id=' + str(id), data=url_callback_payload)
             if response.reason == 'Ok':
                 body = response.json()
