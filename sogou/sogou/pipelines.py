@@ -51,22 +51,37 @@ class SogouPipeline(object):
             id = item['id']
             del item['id']
 
+            print('Post to %s' % self.remote_api_url)
+            response = requests.post(url=self.remote_api_url, data=item)
+            print("Response: %s" % response.content)
+            url_callback_payload = {}
+            if response.ok:
+                try:
+                    body = response.json()
+                    if body['success']:
+                        url_callback_payload['status'] = 'finished'
+                    else:
+                        error_message = body['error']['message'].decode('utf-8')
+                        print(error_message)
+                        url_callback_payload['status'] = 'failed'
+                        url_callback_payload['message'] = error_message
+
+                except ValueError:
+                    print('Response is not a json data')
+            else:
+                print("Post to `%s` failed." % self.remote_api_url)
+                url_callback_payload['status'] = 'failed'
+                url_callback_payload['message'] = response.text.encode('utf-8')
+
             # 修改采集地址状态为完成
-            response = requests.post('http://localhost:8002/index.php/api/post/url/status?id=' + str(id), data={'status': 'finished'})
+            response = requests.post('http://localhost:8002/index.php/api/post/url/callback?id=' + str(id), data=url_callback_payload)
             if response.reason == 'Ok':
                 body = response.json()
                 if not body.success:
-                    print(response.error.message)
+                    print(response.error.message.decode('utf-8'))
 
             else:
                 print(response)
-
-            response = requests.post(url=self.remote_api_url, data=item)
-            print(response.content)
-            if response.reason == 'Ok':
-                print(response.content)
-            else:
-                print("Post to `%s` failed." % self.remote_api_url)
 
             print(80 * '#')
             return item
