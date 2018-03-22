@@ -119,9 +119,15 @@ class SogouFanyi(scrapy.Spider):
         """
         if page_source:
             soup = BeautifulSoup(page_source)
-            title = soup.select_one('div.articlecontent > h1').get_text()
+            title = soup.select_one('div.articlecontent > h1')
+            if title:
+                title = title.get_text()
             content = soup.select_one('div.richtext')
-            description = content.get_text().replace("\n", '')[:60]
+            if content:
+                description = content.get_text().replace("\n", '')[:60]
+                content = content.prettify()
+            else:
+                description = None
             item = SogouItem()
             item['title'] = title
             item['source'] = 'msn'
@@ -141,9 +147,15 @@ class SogouFanyi(scrapy.Spider):
         """
         if page_source:
             soup = BeautifulSoup(page_source)
-            title = soup.select_one('h1.story-body__h1').get_text()
+            title = soup.select_one('h1.story-body__h1')
+            if title:
+                title = title.get_text()
             content = soup.select_one('div.story-body')
-            description = content.get_text().replace("\n", '')[:60]
+            if content:
+                description = content.get_text().replace("\n", '')[:60]
+                content = content.prettify()
+            else:
+                description = None
             item = SogouItem()
             item['title'] = title
             item['source'] = 'bbc'
@@ -174,8 +186,12 @@ class SogouFanyi(scrapy.Spider):
                     break
 
             content = soup.select_one('div.canvas-body')
-            if content is not None:
+            if content:
                 description = content.get_text().replace("\n", '')[:60]
+                print("Yahoo content type = %s" % content)
+                content = content.prettify()
+            else:
+                description = None
 
             if title is None or content is None:
                 return None
@@ -210,8 +226,11 @@ class SogouFanyi(scrapy.Spider):
                     break
 
             content = soup.select_one('div#storytext')
-            if content is not None:
+            if content:
                 description = content.get_text().replace("\n", '')[:60]
+                content = content.prettify()
+            else:
+                description = None
 
             if title is None or content is None:
                 return None
@@ -220,7 +239,7 @@ class SogouFanyi(scrapy.Spider):
                 item['title'] = title
                 item['source'] = 'yahoo'
                 item['description'] = description
-                item['content'] = content
+                item['content'] = content.prettify()
 
                 return item
         else:
@@ -236,12 +255,15 @@ class SogouFanyi(scrapy.Spider):
         if page_source:
             soup = BeautifulSoup(page_source)
             title = soup.select_one('div.foreground > h1')
-            if title is not None:
+            if title:
                 title = title.get_text()
 
             content = soup.select_one('div.body_1gnLA')
-            if content is not None:
+            if content:
                 description = content.get_text().replace("\n", '')[:60]
+                content = content.prettify()
+            else:
+                description = None
 
             if title is None or content is None:
                 return None
@@ -257,57 +279,58 @@ class SogouFanyi(scrapy.Spider):
             return None
 
     def parse(self, response):
-        url = response.url
-        options = webdriver.ChromeOptions()
-        options.add_argument('user-data-dir=D:/tmp')
-        self.browser = webdriver.Chrome('C:\Program Files (x86)\Google\Chrome\Application\chromedriver', options=options)
-        print("Response.url = %s" % url)
-        # sogou_url = ('https://translate.sogoucdn.com/pcvtsnapshot?url=%s&query=&tabMode=1&noTrans=0&tfr=web_en&from=en&to=zh-CHS&_t=1521270440240' % parse.quote(url, ''))
-        sogou_url = ('http://translate.sogoucdn.com/pcvtsnapshot?from=auto&to=zh-CHS&tfr=translatepc&url=%s&domainType=sogou' % parse.quote(url, ''))
+        try:
+            url = response.url
+            options = webdriver.ChromeOptions()
+            options.add_argument('user-data-dir=D:/tmp')
+            self.browser = webdriver.Chrome('C:\Program Files (x86)\Google\Chrome\Application\chromedriver', options=options)
+            print("Response.url = %s" % url)
+            # sogou_url = ('https://translate.sogoucdn.com/pcvtsnapshot?url=%s&query=&tabMode=1&noTrans=0&tfr=web_en&from=en&to=zh-CHS&_t=1521270440240' % parse.quote(url, ''))
+            sogou_url = ('http://translate.sogoucdn.com/pcvtsnapshot?from=auto&to=zh-CHS&tfr=translatepc&url=%s&domainType=sogou' % parse.quote(url, ''))
 
-        print("Sogou URL = %s", sogou_url)
-        self.browser.get(sogou_url)
+            print("Sogou URL = %s", sogou_url)
+            self.browser.get(sogou_url)
 
-        self.browser.switch_to.frame('translate-iframe-dest')
-        time.sleep(20)
-        self.browser.execute_script('window.localStorage.setItem("TRANSPAGE_DIALOG_SHOW", 1);')
-        time.sleep(20)
+            self.browser.switch_to.frame('translate-iframe-dest')
+            time.sleep(20)
+            self.browser.execute_script('window.localStorage.setItem("TRANSPAGE_DIALOG_SHOW", 1);')
+            time.sleep(20)
 
-        page_source = self.browser.page_source
-        print(type(page_source))
-        if self.debug and page_source:
-            f = open('article.txt', 'w+')
-            print(page_source)
-            # f.write(page_source.encode('utf-8'))
-            f.close()
+            page_source = self.browser.page_source
+            print("page_source type is " + str(type(page_source)))
+            if self.debug and page_source:
+                f = open('article.txt', 'w+')
+                # print(page_source)
+                # f.write(page_source.encode('utf-8'))
+                f.close()
 
-        if url is None:
-            parse_result = None
-        elif '.bbc.' in url:
-            parse_result = self.parse_bbc(page_source)
-        elif '.msn.' in url:
-            parse_result = self.parse_msn(page_source)
-        elif '.yahoo.' in url:
-            parse_result = self.parse_yahoo(page_source)
-        elif '.cnn.' in url:
-            parse_result = self.parse_cnn(page_source)
-        elif '.reuters.' in url:
-            parse_result = self.parse_reuters(page_source)
-        else:
-            parse_result = None
+            if url is None:
+                parse_result = None
+            elif '.bbc.' in url:
+                parse_result = self.parse_bbc(page_source)
+            elif '.msn.' in url:
+                parse_result = self.parse_msn(page_source)
+            elif '.yahoo.' in url:
+                parse_result = self.parse_yahoo(page_source)
+            elif '.cnn.' in url:
+                parse_result = self.parse_cnn(page_source)
+            elif '.reuters.' in url:
+                parse_result = self.parse_reuters(page_source)
+            else:
+                parse_result = None
 
-        if parse_result is not None:
-            parse_result['id'] = self.urls[self.url_index]['id']
-            yield parse_result
-            # Post to api
-        else:
-            print('Translate Failed.')
+            if parse_result is not None:
+                parse_result['id'] = self.urls[self.url_index]['id']
+                yield parse_result
+                # Post to api
+            else:
+                print('Translate Failed.')
 
-        self.browser.close()
-
-        self.url_index = self.url_index + 1
-        print('self.url_index = ' + str(self.url_index))
-        if len(self.urls) > self.url_index:
-            url = self.urls[self.url_index]
-            yield scrapy.Request(url=url, callback=self.parse)
-            # yield response.follow(url, self.parse())
+            self.url_index = self.url_index + 1
+            print('self.url_index = ' + str(self.url_index))
+            if len(self.urls) > self.url_index:
+                url = self.urls[self.url_index]
+                yield scrapy.Request(url=url, callback=self.parse)
+                # yield response.follow(url, self.parse())
+        finally:
+            self.browser.close()
