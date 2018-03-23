@@ -9,12 +9,13 @@ import scrapy
 
 
 class SogouItem(scrapy.Item):
-    id = scrapy.Field()
+    post_url_id = scrapy.Field()
     node_id = scrapy.Field()
     title = scrapy.Field()
     short_title = scrapy.Field()
     author = scrapy.Field()
     source = scrapy.Field()
+    source_url = scrapy.Field()
     description = scrapy.Field()
     published_at = scrapy.Field()
     content = scrapy.Field()
