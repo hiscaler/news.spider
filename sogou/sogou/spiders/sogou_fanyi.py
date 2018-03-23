@@ -119,12 +119,15 @@ class SogouFanyi(scrapy.Spider):
         """
         if page_source:
             soup = BeautifulSoup(page_source)
+            for script in soup(["script", "style"]):
+                script.decompose()
+
             title = soup.select_one('div.articlecontent > h1')
             if title:
-                title = title.get_text()
+                title = title.get_text().strip()
             content = soup.select_one('div.richtext')
             if content:
-                description = content.get_text().replace("\n", '')[:60]
+                description = content.get_text().strip().replace("\n", '')[:60]
                 content = content.prettify()
             else:
                 description = None
@@ -147,12 +150,15 @@ class SogouFanyi(scrapy.Spider):
         """
         if page_source:
             soup = BeautifulSoup(page_source)
+            for script in soup(["script", "style"]):
+                script.decompose()
+
             title = soup.select_one('h1.story-body__h1')
             if title:
-                title = title.get_text()
+                title = title.get_text().strip()
             content = soup.select_one('div.story-body')
             if content:
-                description = content.get_text().replace("\n", '')[:60]
+                description = content.get_text().strip().replace("\n", '')[:60]
                 content = content.prettify()
             else:
                 description = None
@@ -176,18 +182,21 @@ class SogouFanyi(scrapy.Spider):
         if page_source:
             title = None
             soup = BeautifulSoup(page_source)
+            for script in soup(["script", "style"]):
+                script.decompose()
+
             selectors = ['#Lead-1-HeadComponentTitle h1', '#SideTop-0-HeadComponentTitle h1']
             for selector in selectors:
                 title = soup.select_one(selector)
                 if title is None:
                     continue
                 else:
-                    title = title.get_text()
+                    title = title.get_text().strip()
                     break
 
             content = soup.select_one('div.canvas-body')
             if content:
-                description = content.get_text().replace("\n", '')[:60]
+                description = content.get_text().strip().replace("\n", '')[:60]
                 print("Yahoo content type = %s" % content)
                 content = content.prettify()
             else:
@@ -215,6 +224,9 @@ class SogouFanyi(scrapy.Spider):
         """
         if page_source:
             soup = BeautifulSoup(page_source)
+            for script in soup(["script", "style"]):
+                script.decompose()
+
             title = None
             selectors = ['h1.article-title', 'h1.pg-headline']
             for selector in selectors:
@@ -222,12 +234,12 @@ class SogouFanyi(scrapy.Spider):
                 if title is None:
                     continue
                 else:
-                    title = title.get_text()
+                    title = title.get_text().strip()
                     break
 
             content = soup.select_one('div#storytext')
             if content:
-                description = content.get_text().replace("\n", '')[:60]
+                description = content.get_text().strip().replace("\n", '')[:60]
                 content = content.prettify()
             else:
                 description = None
@@ -239,7 +251,7 @@ class SogouFanyi(scrapy.Spider):
                 item['title'] = title
                 item['source'] = 'yahoo'
                 item['description'] = description
-                item['content'] = content.prettify()
+                item['content'] = content
 
                 return item
         else:
@@ -254,13 +266,16 @@ class SogouFanyi(scrapy.Spider):
         """
         if page_source:
             soup = BeautifulSoup(page_source)
+            for script in soup(["script", "style"]):
+                script.decompose()
+
             title = soup.select_one('div.foreground > h1')
             if title:
-                title = title.get_text()
+                title = title.get_text().strip()
 
             content = soup.select_one('div.body_1gnLA')
             if content:
-                description = content.get_text().replace("\n", '')[:60]
+                description = content.get_text().strip().replace("\n", '')[:60]
                 content = content.prettify()
             else:
                 description = None

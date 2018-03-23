@@ -53,15 +53,15 @@ class SogouPipeline(object):
 
             print('Post to %s' % self.remote_api_url)
             response = requests.post(url=self.remote_api_url, data=item)
-            print("Response: %s" % response.content)
+            print("Response: %s" % response.text)
             url_callback_payload = {}
             if response.ok:
                 try:
-                    body = response.json()
-                    if body['success']:
+                    response_body = response.json()
+                    if response_body['success']:
                         url_callback_payload['status'] = 'finished'
                     else:
-                        error_message = body['error']['message'].decode('utf-8')
+                        error_message = response_body['error']['message'].decode('utf-8')
                         print(error_message)
                         url_callback_payload['status'] = 'failed'
                         url_callback_payload['message'] = error_message
@@ -72,14 +72,14 @@ class SogouPipeline(object):
             else:
                 print("Post to `%s` failed." % self.remote_api_url)
                 url_callback_payload['status'] = 'failed'
-                url_callback_payload['message'] = response.text.encode('utf-8')
+                url_callback_payload['message'] = response.text
 
             # 采集地址数据回调处理
             response = requests.post('http://localhost:8002/index.php/api/post/url/callback?id=' + str(id), data=url_callback_payload)
             if response.reason == 'Ok':
-                body = response.json()
-                if not body.success:
-                    print(response.error.message.decode('utf-8'))
+                response_body = response.json()
+                if not response_body['success']:
+                    print(response_body['error']['message'].decode('utf-8'))
 
             else:
                 print(response)
