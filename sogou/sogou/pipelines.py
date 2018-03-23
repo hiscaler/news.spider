@@ -5,13 +5,14 @@
 # Don't forget to add your pipeline to the ITEM_PIPELINES setting
 # See: https://doc.scrapy.org/en/latest/topics/item-pipeline.html
 
-import pprint
-import requests
 import datetime
-import re
 import mimetypes
-import uuid
 import os
+import pprint
+import re
+import uuid
+
+import requests
 
 
 class SogouPipeline(object):
@@ -21,73 +22,88 @@ class SogouPipeline(object):
         self.remote_api_url = 'http://192.168.1.222:8066/index.php/news?accessToken=FF78F2D3-C2A5-2875-0EE2-EB6803A67639'
 
     def process_item(self, item, spider):
-        if item['title'] is not None or item['content'] is not None:
-            if 'node_id' not in item or not item['node_id']:
-                item['node_id'] = 0
-
-            if 'description' not in item or not item['description']:
-                item['description'] = item['content'].strip().replace("\n", '')[:60]
-
-            if 'short_title' not in item or not item['short_title']:
-                item['short_title'] = item['title']
-
-            if 'published_at' not in item or not item['published_at']:
-                item['published_at'] = datetime.date.today().strftime('%Y-%m-%d %H:%M:%S')
-
-            if 'author' not in item or not item['author']:
-                item['author'] = 'APD'
-
-            if 'source' not in item or not item['source']:
-                item['source'] = 'APD'
-
-            item['content'] = self.fix_content(item['content'])
-
-            print(80 * '#')
-            print(self.__class__.__name__ + '.' + self.process_item.__name__ + ':')
-            print(80 * '-')
-            pp = pprint.PrettyPrinter(indent=4)
-            pp.pprint(item)
-
-            id = item['id']
-            del item['id']
-
-            print('Post to %s' % self.remote_api_url)
-            response = requests.post(url=self.remote_api_url, data=item)
-            print("Response: %s" % response.text)
-            url_callback_payload = {}
-            if response.ok:
-                try:
-                    response_body = response.json()
-                    if response_body['success']:
-                        url_callback_payload['status'] = 'finished'
-                    else:
-                        error_message = response_body['error']['message'].decode('utf-8')
-                        print(error_message)
-                        url_callback_payload['status'] = 'failed'
-                        url_callback_payload['message'] = error_message
-
-                except ValueError:
-                    url_callback_payload['status'] = 'failed'
-                    print('Response is not a json data')
-            else:
-                print("Post to `%s` failed." % self.remote_api_url)
-                url_callback_payload['status'] = 'failed'
-                url_callback_payload['message'] = response.text
-
-            # 采集地址数据回调处理
-            response = requests.post('http://localhost:8002/index.php/api/post/url/callback?id=' + str(id), data=url_callback_payload)
-            if response.reason == 'Ok':
-                response_body = response.json()
-                if not response_body['success']:
-                    print(response_body['error']['message'].decode('utf-8'))
-
-            else:
-                print(response)
-
-            print(80 * '#')
-            return item
+        if 'error' in item and item['error']:
+            self.post_url_callback(item['post_url_id'], {'status': 'failed'})
         else:
-            print("Item is invalid.")
+            if item['title'] is not None or item['content'] is not None:
+                if 'node_id' not in item or not item['node_id']:
+                    item['node_id'] = 0
+
+                if 'description' not in item or not item['description']:
+                    item['description'] = item['content'].strip().replace("\n", '')[:60]
+
+                if 'short_title' not in item or not item['short_title']:
+                    item['short_title'] = item['title']
+
+                if 'published_at' not in item or not item['published_at']:
+                    item['published_at'] = datetime.date.today().strftime('%Y-%m-%d %H:%M:%S')
+
+                if 'author' not in item or not item['author']:
+                    item['author'] = 'APD'
+
+                if 'source' not in item or not item['source']:
+                    item['source'] = 'APD'
+
+                item['content'] = self.fix_content(item['content'])
+
+                print(80 * '#')
+                print(self.__class__.__name__ + '.' + self.process_item.__name__ + ':')
+                print(80 * '-')
+                pp = pprint.PrettyPrinter(indent=4)
+                pp.pprint(item)
+
+                post_url_id = item['post_url_id']
+                del item['post_url_id']
+
+                print('Post to %s' % self.remote_api_url)
+                response = requests.post(url=self.remote_api_url, data=item)
+                print("Response: %s" % response.text)
+                url_callback_payload = {}
+                if response.ok:
+                    try:
+                        response_body = response.json()
+                        if response_body['success']:
+                            url_callback_payload['status'] = 'finished'
+                        else:
+                            error_message = response_body['error']['message'].decode('utf-8')
+                            print(error_message)
+                            url_callback_payload['status'] = 'failed'
+                            url_callback_payload['message'] = error_message
+
+                    except ValueError:
+                        url_callback_payload['status'] = 'failed'
+                        print('Response is not a json data')
+                else:
+                    print("Post to `%s` failed." % self.remote_api_url)
+                    url_callback_payload['status'] = 'failed'
+                    url_callback_payload['message'] = response.text
+
+                # 采集地址数据回调处理
+                self.post_url_callback(post_url_id, url_callback_payload)
+                # response = requests.post('http://localhost:8002/index.php/api/post/url/callback?id=' + str(post_url_id), data=url_callback_payload)
+                # if response.reason == 'Ok':
+                #     response_body = response.json()
+                #     if not response_body['success']:
+                #         print(response_body['error']['message'].decode('utf-8'))
+                #
+                # else:
+                #     print(response)
+
+                print(80 * '#')
+                return item
+            else:
+                print("Item is invalid.")
+
+    @staticmethod
+    def post_url_callback(post_url_id, url_callback_payload):
+        response = requests.post('http://localhost:8002/index.php/api/post/url/callback?id=' + str(post_url_id), data=url_callback_payload)
+        if response.reason == 'Ok':
+            response_body = response.json()
+            if not response_body['success']:
+                print(response_body['error']['message'].decode('utf-8'))
+
+        else:
+            print(response)
 
     @staticmethod
     def fix_content(html):

@@ -1,13 +1,14 @@
 # -*- coding: utf-8 -*-
 
-import scrapy
-from selenium import webdriver
-import time
-from bs4 import BeautifulSoup
-from urllib import parse
-import requests
-import sys
 import io
+import sys
+import time
+from urllib import parse
+
+import requests
+import scrapy
+from bs4 import BeautifulSoup
+from selenium import webdriver
 from sogou.items import SogouItem
 
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='gb18030')
@@ -31,17 +32,17 @@ class SogouFanyi(scrapy.Spider):
         #     'http://www.bbc.com/news/world-us-canada-43453312'
         #     'https://finance.yahoo.com/news/thanks-obama-virginia-blames-barack-060948297.html'
         # ]
-        urlItem = self.urls[self.url_index]
+        url_item = self.urls[self.url_index]
         print("Current url index is %s" % self.url_index)
-        print("Current url is %s" % urlItem['url'])
-        yield scrapy.Request(url=urlItem['url'], callback=self.parse)
+        print("Current url is %s" % url_item['url'])
+        yield scrapy.Request(url=url_item['url'], callback=self.parse)
         # for url in urls:
         #     yield scrapy.Request(url=url, callback=self.parse())
 
     def __init__(self):
         super(SogouFanyi, self).__init__()
         if not self.urls:
-            response = requests.get('http://localhost:8002/index.php/api/post/url/list?limit=10&status=pending,failed')
+            response = requests.get('http://localhost:8002/index.php/api/post/url/list?limit=100&status=pending,failed')
             if response.status_code == 200:
                 body_json = response.json()
                 for item in body_json['data']['items']:
@@ -298,6 +299,7 @@ class SogouFanyi(scrapy.Spider):
             url = response.url
             options = webdriver.ChromeOptions()
             options.add_argument('user-data-dir=D:/tmp')
+            options.add_experimental_option("prefs", {"profile.managed_default_content_settings.images": 2})
             self.browser = webdriver.Chrome('C:\Program Files (x86)\Google\Chrome\Application\chromedriver', options=options)
             print("Response.url = %s" % url)
             # sogou_url = ('https://translate.sogoucdn.com/pcvtsnapshot?url=%s&query=&tabMode=1&noTrans=0&tfr=web_en&from=en&to=zh-CHS&_t=1521270440240' % parse.quote(url, ''))
@@ -335,17 +337,23 @@ class SogouFanyi(scrapy.Spider):
                 parse_result = None
 
             if parse_result is not None:
-                parse_result['id'] = self.urls[self.url_index]['id']
+                parse_result['post_url_id'] = self.urls[self.url_index]['id']
+                parse_result['source_url'] = url
                 yield parse_result
                 # Post to api
             else:
-                print('Translate Failed.')
+                yield {
+                    'error': True,
+                    'post_url_id': self.urls[self.url_index]['id']
+                }
 
             self.url_index = self.url_index + 1
             print('self.url_index = ' + str(self.url_index))
             if len(self.urls) > self.url_index:
                 url = self.urls[self.url_index]
-                yield scrapy.Request(url=url, callback=self.parse)
+                print('Continue url is %s' % url)
+                yield scrapy.Request(url=url['url'], callback=self.parse)
                 # yield response.follow(url, self.parse())
         finally:
             self.browser.close()
+            time.sleep(10)
