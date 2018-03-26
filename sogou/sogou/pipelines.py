@@ -12,6 +12,8 @@ import pprint
 import re
 import uuid
 
+import jieba
+import jieba.analyse
 import requests
 
 
@@ -45,6 +47,23 @@ class SogouPipeline(object):
                     item['source'] = 'APD'
 
                 item['content'] = self.fix_content(item['content'])
+                if 'raw_content' in item and item['raw_content'] is not None:
+                    raw_content = item['raw_content']
+                    del item['raw_content']
+                    raw_text = raw_content.get_text().strip().replace("\n", '')
+                    tags = jieba.analyse.extract_tags(raw_text, topK=5, withWeight=True, allowPOS=())
+                    tags = set(x for x, y in tags)
+
+                    if tags:
+                        with open('stopwords.txt', 'r', encoding='utf-8') as f:
+                            stopwords = set(map(lambda s: s.strip(), f.readlines()))
+                            if stopwords:
+                                tags = set(tags.difference(stopwords))
+
+                        if tags:
+                            tags = ','.join(tags)
+                            item['keywords'] = tags
+                            item['tags'] = tags
 
                 print(80 * '#')
                 print(self.__class__.__name__ + '.' + self.process_item.__name__ + ':')

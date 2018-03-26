@@ -42,7 +42,7 @@ class SogouFanyi(scrapy.Spider):
     def __init__(self):
         super(SogouFanyi, self).__init__()
         if not self.urls:
-            response = requests.get('http://localhost:8002/index.php/api/post/url/list?limit=100&status=pending,failed')
+            response = requests.get('http://localhost:8002/index.php/api/post/url/list?limit=10&status=pending')
             if response.status_code == 200:
                 body_json = response.json()
                 for item in body_json['data']['items']:
@@ -196,6 +196,7 @@ class SogouFanyi(scrapy.Spider):
                     break
 
             content = soup.select_one('div.canvas-body')
+            raw_content = content
             if content:
                 description = content.get_text().strip().replace("\n", '')[:60]
                 print("Yahoo content type = %s" % content)
@@ -210,6 +211,7 @@ class SogouFanyi(scrapy.Spider):
                 item['title'] = title
                 item['source'] = 'yahoo'
                 item['description'] = description
+                item['raw_content'] = raw_content
                 item['content'] = content
 
                 return item
@@ -305,7 +307,7 @@ class SogouFanyi(scrapy.Spider):
             # sogou_url = ('https://translate.sogoucdn.com/pcvtsnapshot?url=%s&query=&tabMode=1&noTrans=0&tfr=web_en&from=en&to=zh-CHS&_t=1521270440240' % parse.quote(url, ''))
             sogou_url = ('http://translate.sogoucdn.com/pcvtsnapshot?from=auto&to=zh-CHS&tfr=translatepc&url=%s&domainType=sogou' % parse.quote(url, ''))
 
-            print("Sogou URL = %s", sogou_url)
+            print("Sogou URL = %s" % sogou_url)
             self.browser.get(sogou_url)
 
             self.browser.switch_to.frame('translate-iframe-dest')
