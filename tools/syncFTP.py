@@ -4,6 +4,7 @@ import os
 
 import paramiko
 import sys
+import stat
 
 """FTP 文件同步"""
 
@@ -25,7 +26,13 @@ class Sync(object):
     def __init__(self, config, remote_dir, local_dir):
         for key in config:
             if key in self._config:
-                self._config[key] = config[key]
+                value = config[key]
+                if key is 'port':
+                    value = int(value)
+                else:
+                    value = str(value)
+
+                self._config[key] = value
 
         self._remote_dir = remote_dir
         self._local_dir = local_dir
@@ -64,32 +71,43 @@ class SyncFtp(Sync):
             self.close()
             print(str(e))
 
-    def get_files(self, current_directory):
+    def get_files(self, path, recursion=False):
         files = []
-        self._ftp.chdir(current_directory)
-
-        for remote_dir in self._ftp.listdir(current_directory):
-            if os.path.isdir(remote_dir):
-                files.extend(self.get_files(remote_dir))
+        self._ftp.chdir(path)
+        for name in self._ftp.listdir(path):
+            if recursion:
+                file_attr = self._ftp.lstat(path + '/' + name)
+                if stat.S_ISDIR(file_attr.st_mode):
+                    files.extend(self.get_files(path + '/' + name, recursion))
+                elif stat.S_ISREG(file_attr.st_mode):
+                    files.append(path + '/' + name)
             else:
-                files.append(current_directory + '/' + remote_dir)
+                files.append(path + '/' + name)
 
         return files
 
-    def download(self, current_directory):
-        files = self.get_files(current_directory)
-        if files:
-            for file in files:
-                local_path = file.replace(self._remote_dir, self._local_dir)
-                if not os.path.exists(os.path.dirname(local_path)):
-                    os.mkdir(os.path.dirname(local_path))
+    def download(self, path, recursion=True):
+        file_attr = self._ftp.lstat(path)
+        if stat.S_ISDIR(file_attr.st_mode):
+            files = self.get_files(path, recursion)
+        elif stat.S_ISREG(file_attr.st_mode):
+            files = [path]
+        else:
+            files = []
 
-                if not os.path.exists(local_path):
-                    self._count += 1
-                    print("%s: Download %s file..." % (self._count, file))
-                    self._ftp.get(file, localpath=local_path)
-                else:
-                    print("Ignore %s file..." % file)
+        for file in files:
+            local_path = file.replace(self._remote_dir, self._local_dir)
+            file_dir = os.path.dirname(local_path)
+            file_dir = file_dir.replace('/', os.sep)
+            if not os.path.exists(file_dir):
+                os.makedirs(file_dir)
+
+            if not os.path.exists(local_path):
+                self._count += 1
+                print("%s: Download %s file..." % (self._count, file))
+                self._ftp.get(file, localpath=local_path)
+            else:
+                print("Ignore %s file..." % file)
 
     def close(self):
         if self._transport is not None:
@@ -108,10 +126,10 @@ if __name__ == '__main__':
         raise BaseException
 
     config = {
-        'ip': str(ftp_config['ip']),
-        'port': int(ftp_config['port']),
-        'username': str(ftp_config['username']),
-        'password': str(ftp_config['password'])
+        'ip': ftp_config['ip'],
+        'port': ftp_config['port'],
+        'username': ftp_config['username'],
+        'password': ftp_config['password']
     }
     remote_dir = str(ftp_config['remote_dir'])
     local_dir = str(ftp_config['local_dir'])
@@ -119,11 +137,9 @@ if __name__ == '__main__':
     try:
         sftp = SyncFtp(config, remote_dir=remote_dir, local_dir=local_dir)
         sftp.open()
-        print(remote_dir)
-        dirs = sftp.get_files(remote_dir)
-        for dir in dirs:
-            sftp.download(dir)
-
+        root_dirs = sftp.get_files(remote_dir, False)
+        for root_dir in root_dirs:
+            sftp.download(root_dir)
 
     finally:
         sftp.close()
