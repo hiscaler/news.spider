@@ -88,3 +88,17 @@ ITEM_PIPELINES = {
 #HTTPCACHE_DIR = 'httpcache'
 #HTTPCACHE_IGNORE_HTTP_CODES = []
 #HTTPCACHE_STORAGE = 'scrapy.extensions.httpcache.FilesystemCacheStorage'
+
+# 业务配置
+BIZ_DEBUG = True
+BIZ_API = {
+   'dev': {
+      'postUrl': '',
+      'postNews': ''
+   },
+   'prod': {
+      'postUrl': '',
+      'postNews': ''
+   }
+}
+
