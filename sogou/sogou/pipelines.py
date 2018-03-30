@@ -60,7 +60,7 @@ class SogouPipeline(object):
                     tags = set(x for x, y in tags)
 
                     if tags:
-                        with open(os.path.join(os.getcwd(), 'stopwords.txt'), 'r', encoding='utf-8') as f:
+                        with open(os.path.join(os.getcwd(), '..', '..', 'tools', 'stopwords.txt'), 'r', encoding='utf-8') as f:
                             stopwords = set(map(lambda s: s.strip(), f.readlines()))
                             if stopwords:
                                 tags = set(tags.difference(stopwords))
