@@ -15,13 +15,18 @@ import uuid
 import jieba
 import jieba.analyse
 import requests
+from scrapy.utils.project import get_project_settings
 
 
 class SogouPipeline(object):
-    remote_api_url = None
+    _api_post_news = None
+    _api_post_url = None
 
     def __init__(self):
-        self.remote_api_url = 'http://192.168.1.222:8066/index.php/news?accessToken=FF78F2D3-C2A5-2875-0EE2-EB6803A67639'
+        settings = get_project_settings()
+        api = settings['BIZ_API']['dev'] if settings['BIZ_DEBUG'] else settings['BIZ_API']['prod']
+        self._api_post_news = api['postNews']
+        self._api_post_url = api['postUrl']
 
     def process_item(self, item, spider):
         if 'error' in item and item['error']:
@@ -29,7 +34,7 @@ class SogouPipeline(object):
         else:
             if item['title'] is not None or item['content'] is not None:
                 if 'node_id' not in item or not item['node_id']:
-                    item['node_id'] = 0
+                    item['node_id'] = 884
 
                 if 'description' not in item or not item['description']:
                     item['description'] = item['content'].strip().replace("\n", '')[:60]
@@ -55,7 +60,7 @@ class SogouPipeline(object):
                     tags = set(x for x, y in tags)
 
                     if tags:
-                        with open('stopwords.txt', 'r', encoding='utf-8') as f:
+                        with open(os.path.join(os.getcwd(), 'stopwords.txt'), 'r', encoding='utf-8') as f:
                             stopwords = set(map(lambda s: s.strip(), f.readlines()))
                             if stopwords:
                                 tags = set(tags.difference(stopwords))
@@ -74,8 +79,8 @@ class SogouPipeline(object):
                 post_url_id = item['post_url_id']
                 del item['post_url_id']
 
-                print('Post to %s' % self.remote_api_url)
-                response = requests.post(url=self.remote_api_url, data=item)
+                print('Post to %s' % self._api_post_news)
+                response = requests.post(url=self._api_post_news, data=item)
                 print("Response: %s" % response.text)
                 url_callback_payload = {}
                 if response.ok:
@@ -93,7 +98,7 @@ class SogouPipeline(object):
                         url_callback_payload['status'] = 'failed'
                         print('Response is not a json data')
                 else:
-                    print("Post to `%s` failed." % self.remote_api_url)
+                    print("Post to `%s` failed." % self._api_post_news)
                     url_callback_payload['status'] = 'failed'
                     url_callback_payload['message'] = response.text
 
@@ -113,9 +118,8 @@ class SogouPipeline(object):
             else:
                 print("Item is invalid.")
 
-    @staticmethod
-    def post_url_callback(post_url_id, url_callback_payload):
-        response = requests.post('http://localhost:8002/index.php/api/post/url/callback?id=' + str(post_url_id), data=url_callback_payload)
+    def post_url_callback(self, post_url_id, url_callback_payload):
+        response = requests.post(self._api_post_url + '/post/url/callback?id=' + str(post_url_id), data=url_callback_payload)
         if response.reason == 'Ok':
             response_body = response.json()
             if not response_body['success']:

@@ -5,11 +5,13 @@ import sys
 import time
 from urllib import parse
 
+import os
 import requests
 import scrapy
 from bs4 import BeautifulSoup
 from selenium import webdriver
 from sogou.items import SogouItem
+from scrapy.utils.project import get_project_settings
 
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='gb18030')
 
@@ -42,7 +44,9 @@ class SogouFanyi(scrapy.Spider):
     def __init__(self):
         super(SogouFanyi, self).__init__()
         if not self.urls:
-            response = requests.get('http://localhost:8002/index.php/api/post/url/list?limit=10&status=pending')
+            settings = get_project_settings()
+            api = settings['BIZ_API']['dev'] if settings['BIZ_DEBUG'] else settings['BIZ_API']['prod']
+            response = requests.get(api['postUrl'] + '/post/url/list?limit=10&status=pending')
             if response.status_code == 200:
                 body_json = response.json()
                 for item in body_json['data']['items']:
