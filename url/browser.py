@@ -43,41 +43,64 @@ class Browser(object):
         self.get(url)
         return self._browser.page_source
 
-    def get_all_links(self, page_source, check_func=None):
-        links = set()
-        soup = BeautifulSoup(page_source)
+    def get_all_links(self, page_source, valid_url_fun=None):
+        post_urls = set()
+        soup = BeautifulSoup(page_source, 'lxml')
         for script in soup(["script", "style"]):
             script.decompose()
 
         links = soup.find_all('a', href=True)
         pattern = re.compile(r'.*href="(\S*)".*')
-        post_urls = set()
         for link in links:
             link = link.prettify()
             href = pattern.findall(link)
             if href:
                 href = href[0]
-                if href and href.find('/article') > -1:
+                if href and valid_url_fun(href):
                     if not href.startswith('http'):
-                        href = url + href
+                        href = urllib.parse.urljoin(self._site_url, href)
 
                     post_urls.add(href)
 
-        return links
+        return post_urls
 
     def close(self):
         if self._browser is not None:
             self._browser.close()
 
 
+def test_check_url(href=None):
+    if href and href.find('viewmode') > -1:
+        return True
+    else:
+        return False
+
+
 if __name__ == '__main__':
-    url = 'article/us-britain-russia-diplomats/russia-in-spy-rift-riposte-expels-59-diplomats-from-23-countries-idUSKBN1H612R?il=0'
+    url = 'https://blog.csdn.net/handsomekang/article/details/41446319'
     print(urllib.parse.urlsplit(url))
     url_result = urlparse(url)
     print(type(url_result))
     site_url = url_result.scheme
     if site_url:
         site_url += '://' + url_result.netloc + (url_result.port if url_result.port else '')
-    # site_url = urllib.parse.urljoin('https://www.reuters.com/', url,'a.html')
+    site_url += url_result.path
+    if url_result.query:
+        site_url += '?' + url_result.query
+    print("Site URL = " + site_url)
 
-    print(site_url)
+    html = """ <ul>
+            <li id="btnContents"><a href="https://blog.csdn.net/handsomekang?viewmode=contents"><span
+                    onclick="_gaq.push(['_trackEvent','function', 'onclick', 'blog_articles_mulu'])">
+                    <img src="https://csdnimg.cn/release/phoenix/images/ico_list.gif">目录视图</span></a></li>
+            <li id="btnView"><a href="https://blog.csdn.net/handsomekang?viewmode=list"><span
+                    onclick="_gaq.push(['_trackEvent','function', 'onclick', 'blog_articles_zhaiyao'])">
+                    <img src="https://csdnimg.cn/release/phoenix/images/ico_summary.gif">摘要视图</span></a></li>
+            <li id="btnRss"><a href="https://blog.csdn.net/handsomekang/rss/list"><span
+                    onclick="_gaq.push(['_trackEvent','function', 'onclick', 'blog_articles_RSS'])">
+                    <img src="https://csdnimg.cn/release/phoenix/images/ico_rss.gif">订阅</span></a></li>
+                    </ul>"""
+    browser = Browser()
+    links = browser.get_all_links(html, test_check_url)
+    print("Result:")
+    print(links)
