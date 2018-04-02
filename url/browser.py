@@ -44,7 +44,7 @@ class Browser(object):
         return self._browser.page_source
 
     def get_all_links(self, page_source, valid_url_fun=None):
-        post_urls = set()
+        all_links = set()
         soup = BeautifulSoup(page_source, 'lxml')
         for script in soup(["script", "style"]):
             script.decompose()
@@ -60,9 +60,9 @@ class Browser(object):
                     if not href.startswith('http'):
                         href = urllib.parse.urljoin(self._site_url, href)
 
-                    post_urls.add(href)
+                    all_links.add(href)
 
-        return post_urls
+        return all_links
 
     def close(self):
         if self._browser is not None:
