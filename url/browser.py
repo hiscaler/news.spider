@@ -5,6 +5,7 @@ from urllib.parse import urlparse
 
 from bs4 import BeautifulSoup
 from selenium import webdriver
+from selenium.common.exceptions import TimeoutException
 
 
 class Browser(object):
@@ -29,7 +30,10 @@ class Browser(object):
     def get(self, url):
         print(url)
         self._check()
-        self._browser.get(url)
+        try:
+            self._browser.get(url)
+        except TimeoutException as ex:
+            print(str(ex))
 
     def page_source(self, url):
         url_result = urlparse(url)
