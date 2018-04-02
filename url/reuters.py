@@ -1,5 +1,5 @@
 # -*- encode: utf-8 -*-
-"""CNN 网站数据地址采集
+"""reuters 网站数据地址采集
 """
 import time
 
@@ -9,12 +9,10 @@ sys.path.append('..')
 from url.browser import Browser
 from url.helper import post_urls
 
-base_url = 'https://edition.cnn.com'
 language = 'en-US'
 
 source_urls = [
-    'https://edition.cnn.com/',
-    'https://edition.cnn.com/travel',
+    'https://www.reuters.com',
 ]
 
 begin_time = time.time()
@@ -26,10 +24,11 @@ try:
         browser.get(url)
         html = browser.page_source(url)
         if html:
-            page_urls = browser.get_all_links(html, lambda href: href and href.endswith('index.html'))
+            page_urls = browser.get_all_links(html, lambda href: href and href.find('/article') > -1)
             post_urls(page_urls, language)
         else:
             print("获取 {url} 源码失败。".format(url=url))
+
 
 finally:
     browser.close()
