@@ -21,12 +21,14 @@ from scrapy.utils.project import get_project_settings
 class SogouPipeline(object):
     _api_post_news = None
     _api_post_url = None
+    _api_post_attribute = None
 
     def __init__(self):
         settings = get_project_settings()
         api = settings['BIZ_API']['dev'] if settings['BIZ_DEBUG'] else settings['BIZ_API']['prod']
         self._api_post_news = api['postNews']
         self._api_post_url = api['postUrl']
+        self._api_post_attribute = api['postAttribute']
 
     def process_item(self, item, spider):
         if 'error' in item and item['error']:
@@ -60,7 +62,7 @@ class SogouPipeline(object):
                     tags = set(x for x, y in tags)
 
                     if tags:
-                        with open(os.path.join(os.getcwd(), '..', '..', 'tools', 'stopwords.txt'), 'r', encoding='utf-8') as f:
+                        with open(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'tools', 'stopwords.txt')), 'r', encoding='utf-8') as f:
                             stopwords = set(map(lambda s: s.strip(), f.readlines()))
                             if stopwords:
                                 tags = set(tags.difference(stopwords))
@@ -88,6 +90,23 @@ class SogouPipeline(object):
                         response_body = response.json()
                         if response_body['success']:
                             url_callback_payload['status'] = 'finished'
+                            try:
+                                # 设置该资讯推送位
+                                entity_id = response_body['data']['id']
+                                print("Post attribute for #%s" % entity_id)
+                                response = requests.post(self._api_post_attribute, {
+                                    'entityId': entity_id,
+                                    'entityName': 'News',
+                                    'alias': 'baidu.bear-pending',
+                                })
+                                print(response.text)
+                                if response.ok:
+                                    response_body = response.json()
+                                    if not response_body['success']:
+                                        print("{id} 设置推送位失败。".format(id=entity_id))
+
+                            except Exception as ex:
+                                print(str(ex))
                         else:
                             error_message = response_body['error']['message'].decode('utf-8')
                             print(error_message)
@@ -177,3 +196,14 @@ class SogouPipeline(object):
                 html = html.replace(img, new_img)
 
         return html
+
+
+if __name__ == '__main__':
+    # print(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'tools', 'stopwords.txt')))
+    with open(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'tools', 'stopwords.txt')), 'r', encoding='utf-8') as f:
+        stopwords = set(map(lambda s: s.strip(), f.readlines()))
+        print(stopwords)
+
+    settings = get_project_settings()
+    api = settings['BIZ_API']['dev'] if settings['BIZ_DEBUG'] else settings['BIZ_API']['prod']
+    print(api)

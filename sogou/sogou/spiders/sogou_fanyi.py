@@ -46,7 +46,7 @@ class SogouFanyi(scrapy.Spider):
         if not self.urls:
             settings = get_project_settings()
             api = settings['BIZ_API']['dev'] if settings['BIZ_DEBUG'] else settings['BIZ_API']['prod']
-            response = requests.get(api['postUrl'] + '/post/url/list?limit=10&status=pending')
+            response = requests.get(api['postUrl'] + '/post/url/list?limit=100&status=pending')
             if response.status_code == 200:
                 body_json = response.json()
                 for item in body_json['data']['items']:
@@ -361,5 +361,6 @@ class SogouFanyi(scrapy.Spider):
                 yield scrapy.Request(url=url['url'], callback=self.parse)
                 # yield response.follow(url, self.parse())
         finally:
-            self.browser.close()
+            if self.browser is not None:
+                self.browser.close()
             time.sleep(10)
