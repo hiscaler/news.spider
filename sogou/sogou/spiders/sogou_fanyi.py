@@ -123,7 +123,7 @@ class SogouFanyi(scrapy.Spider):
         :return: return dict if parse success, else return None
         """
         if page_source:
-            soup = BeautifulSoup(page_source)
+            soup = BeautifulSoup(page_source, 'lxml')
             for script in soup(["script", "style"]):
                 script.decompose()
 
