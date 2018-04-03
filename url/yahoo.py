@@ -1,13 +1,10 @@
 # -*- encode: utf-8 -*-
 """yahoo 网站数据地址采集
 """
-import sys
 import time
 
-sys.path.append('..')
-
-from url.browser import Browser
-from url.helper import post_urls
+from browser import Browser
+from helper import post_urls
 
 language = 'en-US'
 

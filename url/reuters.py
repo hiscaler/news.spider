@@ -3,11 +3,8 @@
 """
 import time
 
-import sys
-
-sys.path.append('..')
-from url.browser import Browser
-from url.helper import post_urls
+from browser import Browser
+from helper import post_urls
 
 language = 'en-US'
 
